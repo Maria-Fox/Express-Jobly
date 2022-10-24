@@ -231,3 +231,35 @@ describe("remove", function () {
     }
   });
 });
+
+/************************************** apply */
+
+describe('apply', function () {
+  const newjob = {
+    title: 'Test Job',
+    salary: 75000,
+    equity: 0.1,
+    companyHandle: 'c2',
+  };
+
+  test('works', async function () {
+    let job = await Job.create(newjob);
+    let application = await User.apply('u1', job.id);
+    expect(application).toEqual({ username: 'u1', jobId: job.id });
+    const found = await db.query(
+      `SELECT * FROM applications WHERE username = 'u1' AND job_id = ${job.id}`
+    );
+    expect(found.rows.length).toEqual(1);
+  });
+
+  test('bad request with dup data', async function () {
+    let job = await Job.create(newjob);
+    try {
+      await User.apply('u1', job.id);
+      await User.apply('u1', job.id);
+      fail();
+    } catch (err) {
+      expect(err instanceof BadRequestError).toBeTruthy();
+    }
+  });
+});

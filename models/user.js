@@ -219,6 +219,39 @@ class User {
 
     if (!user) throw new NotFoundError(`No user: ${username}`);
   }
+
+   /** Creates job application for user.
+   *
+   * Returns { username, jobId }
+   *
+   **/
+
+    static async apply(username, job_id) {
+      const found = await db.query(
+        `SELECT * FROM applications WHERE username = '${username}' AND job_id = ${job_id}`
+      );
+      if (found.rows[0]) {
+        throw new BadRequestError(
+          `Duplicate application - user: ${username}, jobId: ${job_id}`
+        );
+      }
+      const result = await db.query(
+        `INSERT INTO applications
+           (username,
+            job_id)
+           VALUES ($1, $2)
+           RETURNING username, job_id AS "jobId"`,
+        [username, job_id]
+      );
+  
+      const application = result.rows[0];
+      if (!application)
+        throw new NotFoundError(`Invalid username/job_id combination`);
+  
+      return application;
+    }
+
+
 }
 
 

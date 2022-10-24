@@ -1,9 +1,11 @@
-"use strict";
+'use strict';
 
-const { query } = require("express");
-const db = require("../db");
-const { BadRequestError, NotFoundError, ExpressError } = require("../expressError");
-const { sqlForPartialUpdate, getSqlWhereCompanyFilters } = require("../helpers/sql");
+const db = require('../db');
+const { BadRequestError, NotFoundError } = require('../expressError');
+const {
+  sqlForPartialUpdate,
+  getSqlWhereCompanyFilters,
+} = require('../helpers/sql');
 
 /** Related functions for companies. */
 
@@ -19,26 +21,21 @@ class Company {
 
   static async create({ handle, name, description, numEmployees, logoUrl }) {
     const duplicateCheck = await db.query(
-          `SELECT handle
+      `SELECT handle
            FROM companies
            WHERE handle = $1`,
-        [handle]);
+      [handle]
+    );
 
     if (duplicateCheck.rows[0])
       throw new BadRequestError(`Duplicate company: ${handle}`);
 
     const result = await db.query(
-          `INSERT INTO companies
+      `INSERT INTO companies
            (handle, name, description, num_employees, logo_url)
            VALUES ($1, $2, $3, $4, $5)
            RETURNING handle, name, description, num_employees AS "numEmployees", logo_url AS "logoUrl"`,
-        [
-          handle,
-          name,
-          description,
-          numEmployees,
-          logoUrl,
-        ],
+      [handle, name, description, numEmployees, logoUrl]
     );
     const company = result.rows[0];
 
@@ -51,32 +48,20 @@ class Company {
    * */
 
   static async findAll(filter) {
-    // if no query is passed in use an empty object. Otherwise, use helper method to brek down the queries and create SQL q.sytax.
-    const sqlWhere = getSqlWhereCompanyFilters(filter ? filter : {} );
+    const sqlWhere = getSqlWhereCompanyFilters(filter ? filter : {});
+
     const companiesRes = await db.query(
-          `SELECT handle,
+      `SELECT handle,
                   name,
                   description,
                   num_employees AS "numEmployees",
                   logo_url AS "logoUrl"
            FROM companies
            ${sqlWhere}
-           ORDER BY name`);
+           ORDER BY name`
+    );
     return companiesRes.rows;
   }
-
-
-  /** GET /  =>
- *   { companies: [ { handle, name, description, numEmployees, logoUrl }, ...] }
- *
- * Can filter on provided search filters:
- * - minEmployees
- * - maxEmployees
- * - nameLike (will find case-insensitive, partial matches)
- *
- * Authorization required: none
- */
-
 
   /** Given a company handle, return data about company.
    *
@@ -88,18 +73,37 @@ class Company {
 
   static async get(handle) {
     const companyRes = await db.query(
-          `SELECT handle,
-                  name,
-                  description,
-                  num_employees AS "numEmployees",
-                  logo_url AS "logoUrl"
-           FROM companies
-           WHERE handle = $1`,
-        [handle]);
+      `SELECT 
+        c.handle,
+        c.name,
+        c.num_employees AS "numEmployees",
+        c.description,
+        c.logo_url AS "logoUrl",
+        j.id,
+        j.title,
+        j.salary,
+        j.equity
+      FROM companies c
+      LEFT JOIN jobs j ON c.handle = j.company_handle
+      WHERE handle = $1`,
+      [handle]
+    );
 
-    const company = companyRes.rows[0];
+    const foundcompany = companyRes.rows[0];
+    if (!foundcompany) throw new NotFoundError(`No company: ${handle}`);
 
-    if (!company) throw new NotFoundError(`No company: ${handle}`);
+    let jobs = [];
+    if (companyRes.rows[0].id) {
+      jobs = companyRes.rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        salary: r.salary,
+        equity: r.equity,
+      }));
+    }
+
+    const { name, numEmployees, description, logoUrl } = foundcompany;
+    const company = { handle, name, numEmployees, description, logoUrl, jobs };
 
     return company;
   }
@@ -116,17 +120,12 @@ class Company {
    * Throws NotFoundError if not found.
    */
 
-  // run with -i flag . They need to run in band (in order, not at the same time)
-
-
   static async update(handle, data) {
-    const { setCols, values } = sqlForPartialUpdate(
-        data,
-        {
-          numEmployees: "num_employees",
-          logoUrl: "logo_url",
-        });
-    const handleVarIdx = "$" + (values.length + 1);
+    const { setCols, values } = sqlForPartialUpdate(data, {
+      numEmployees: 'num_employees',
+      logoUrl: 'logo_url',
+    });
+    const handleVarIdx = '$' + (values.length + 1);
 
     const querySql = `UPDATE companies 
                       SET ${setCols} 
@@ -151,16 +150,16 @@ class Company {
 
   static async remove(handle) {
     const result = await db.query(
-          `DELETE
+      `DELETE
            FROM companies
            WHERE handle = $1
            RETURNING handle`,
-        [handle]);
+      [handle]
+    );
     const company = result.rows[0];
 
     if (!company) throw new NotFoundError(`No company: ${handle}`);
   }
 }
-
 
 module.exports = Company;

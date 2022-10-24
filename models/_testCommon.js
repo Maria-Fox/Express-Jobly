@@ -44,8 +44,8 @@ async function commonAfterAll() {
   await db.end();
 }
 
-let notAdminToken = createToken({username : "u1", isAdmin = false});
-let adminToken = create({username : "u2", isAdmin = true});
+let notAdminToken = createToken({username : "u1", isAdmin : false});
+let adminToken = create({username : "u2", isAdmin : true});
 
 module.exports = {
   commonBeforeAll,

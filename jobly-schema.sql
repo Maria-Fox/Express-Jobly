@@ -16,6 +16,7 @@ CREATE TABLE users (
   is_admin BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+-- numeric field type chosen because it accepts decimals, integers, big ints, small ints, or approximates/ floats. Includes a scale Everything is measured against one whole. Querying a numeric field actually returns a string and is probs why the field can accept anything - it is scaled to the 1.00
 CREATE TABLE jobs (
   id SERIAL PRIMARY KEY,
   title TEXT NOT NULL,

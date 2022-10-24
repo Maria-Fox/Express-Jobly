@@ -1,5 +1,5 @@
 "use strict";
-// run with -i flag . They need to run in band (in order, not at the same time)
+
 const db = require("../db.js");
 const { BadRequestError, NotFoundError } = require("../expressError");
 const Company = require("./company.js");
@@ -8,6 +8,7 @@ const {
   commonBeforeEach,
   commonAfterEach,
   commonAfterAll,
+  testJobIds,
 } = require("./_testCommon");
 
 beforeAll(commonBeforeAll);
@@ -15,9 +16,7 @@ beforeEach(commonBeforeEach);
 afterEach(commonAfterEach);
 afterAll(commonAfterAll);
 
-
 /************************************** create */
-// can only be done by admin users.
 
 describe("create", function () {
   const newCompany = {
@@ -28,8 +27,7 @@ describe("create", function () {
     logoUrl: "http://new.img",
   };
 
-  test("works for admin users", async function () {
-
+  test("works", async function () {
     let company = await Company.create(newCompany);
     expect(company).toEqual(newCompany);
 
@@ -46,11 +44,7 @@ describe("create", function () {
         logo_url: "http://new.img",
       },
     ]);
-
-  //   test("returns unath for non-admin user", async function () {
-  //     let company = await Company.create(newCompany);
-  //     expect(company.statusCode).toEqual(401);
-  // });
+  });
 
   test("bad request with dupe", async function () {
     try {
@@ -66,7 +60,7 @@ describe("create", function () {
 /************************************** findAll */
 
 describe("findAll", function () {
-  test("works: no filter", async function () {
+  test("works: all", async function () {
     let companies = await Company.findAll();
     expect(companies).toEqual([
       {
@@ -92,6 +86,87 @@ describe("findAll", function () {
       },
     ]);
   });
+
+  test("works: by min employees", async function () {
+    let companies = await Company.findAll({ minEmployees: 2 });
+    expect(companies).toEqual([
+      {
+        handle: "c2",
+        name: "C2",
+        description: "Desc2",
+        numEmployees: 2,
+        logoUrl: "http://c2.img",
+      },
+      {
+        handle: "c3",
+        name: "C3",
+        description: "Desc3",
+        numEmployees: 3,
+        logoUrl: "http://c3.img",
+      },
+    ]);
+  });
+
+  test("works: by max employees", async function () {
+    let companies = await Company.findAll({ maxEmployees: 2 });
+    expect(companies).toEqual([
+      {
+        handle: "c1",
+        name: "C1",
+        description: "Desc1",
+        numEmployees: 1,
+        logoUrl: "http://c1.img",
+      },
+      {
+        handle: "c2",
+        name: "C2",
+        description: "Desc2",
+        numEmployees: 2,
+        logoUrl: "http://c2.img",
+      },
+    ]);
+  });
+
+  test("works: by min-max employees", async function () {
+    let companies = await Company.findAll(
+        { minEmployees: 1, maxEmployees: 1 });
+    expect(companies).toEqual([
+      {
+        handle: "c1",
+        name: "C1",
+        description: "Desc1",
+        numEmployees: 1,
+        logoUrl: "http://c1.img",
+      },
+    ]);
+  });
+
+  test("works: by name", async function () {
+    let companies = await Company.findAll({ name: "1" });
+    expect(companies).toEqual([
+      {
+        handle: "c1",
+        name: "C1",
+        description: "Desc1",
+        numEmployees: 1,
+        logoUrl: "http://c1.img",
+      },
+    ]);
+  });
+
+  test("works: empty list on nothing found", async function () {
+    let companies = await Company.findAll({ name: "nope" });
+    expect(companies).toEqual([]);
+  });
+
+  test("bad request if invalid min > max", async function () {
+    try {
+      await Company.findAll({ minEmployees: 10, maxEmployees: 1 });
+      fail();
+    } catch (err) {
+      expect(err instanceof BadRequestError).toBeTruthy();
+    }
+  });
 });
 
 /************************************** get */
@@ -105,6 +180,12 @@ describe("get", function () {
       description: "Desc1",
       numEmployees: 1,
       logoUrl: "http://c1.img",
+      jobs: [
+        { id: testJobIds[0], title: "Job1", salary: 100, equity: "0.1" },
+        { id: testJobIds[1], title: "Job2", salary: 200, equity: "0.2" },
+        { id: testJobIds[2], title: "Job3", salary: 300, equity: "0" },
+        { id: testJobIds[3], title: "Job4", salary: null, equity: null },
+      ],
     });
   });
 
@@ -119,7 +200,6 @@ describe("get", function () {
 });
 
 /************************************** update */
-// can only be used by admins.
 
 describe("update", function () {
   const updateData = {
@@ -196,7 +276,6 @@ describe("update", function () {
 });
 
 /************************************** remove */
-// can only be used by admins.
 
 describe("remove", function () {
   test("works", async function () {
