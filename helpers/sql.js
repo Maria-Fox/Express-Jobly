@@ -28,4 +28,45 @@ function sqlForPartialUpdate(dataToUpdate, jsToSql) {
   };
 }
 
-module.exports = { sqlForPartialUpdate };
+
+/* Accepts
+ *   filter: object from route query that has keys and values to filter SQL query by.
+ * Returns
+ *   sqlFilter:  string that will be the WHERE clause added to the SQL query based on filter parameters.
+ */
+function getSqlWhereCompanyFilters(filter) {
+  // destructure the query w/ key & value.
+  const { name, minEmployees, maxEmployees } = filter;
+
+  let sqlFilter = '';
+  // If any filter exists, build WHERE Clause
+  if (name || minEmployees || maxEmployees) {
+    // throw error if minEmployes > maxEmployees
+    if (minEmployees && maxEmployees && minEmployees > maxEmployees) {
+      throw new BadRequestError(
+        `minEmployess cannot be greater than maxEmployees`
+      );
+    }
+    // Create SQL statement for each filter as it would appear in WHERE Clause (if exists)
+    let nameSql = name ? `name ILIKE '%${name}%'` : '';
+    console.log("name is", nameSql)
+    let minSql = minEmployees
+    // checks if name is also passed in. If not, uses the simple WHERE clause
+      ? `${nameSql ? 'AND ' : ''}num_employees >= ${minEmployees}`
+      : '';
+    let maxSql = maxEmployees
+      ? `${nameSql || minSql ? 'AND ' : ''}num_employees <= ${maxEmployees}`
+      : '';
+      console.log("************");
+      console.log(maxSql);
+
+    // Concatenate filter statements into one WHERE clause string
+    sqlFilter = `
+        WHERE
+          ${nameSql} ${minSql} ${maxSql}
+      `;
+  }
+  console.log(sqlFilter);
+  return sqlFilter;
+}
+module.exports = { sqlForPartialUpdate, getSqlWhereCompanyFilters};

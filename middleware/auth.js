@@ -36,10 +36,13 @@ function authenticateJWT(req, res, next) {
 
       // The res.locals property is an object that contains response local variables scoped to the request and because of this, it is only available to the view(s) rendered during that request/response cycle (if any).
 
+      // returns a decoded obj. that we are storing as property in response {}.
+      // If the token & SK are authenticated the token is decoded.
+      // looks like: { username: 'maya1', isAdmin: true, iat: 1666393780 }
+
       res.locals.user = jwt.verify(token, SECRET_KEY);
       console.log("This is the res.locals.user property");
       console.log(res.locals.user);
-      // looks like: { username: 'maya1', isAdmin: true, iat: 1666393780 }
     }
     return next();
   } catch (err) {
@@ -65,15 +68,16 @@ function ensureLoggedIn(req, res, next) {
 // part 3
 function ensureAdmin( req, res, next ){
   try {
-    if (!res.locals.user || res.locals.user.isAdmin === false)
+    if (!res.locals.user || res.locals.user.isAdmin === false){
       throw new UnauthorizedError();
+    }
     return next();
   } catch (err) {
     return next(err);
   }
 }
 
-function ensureisAdminOrAuthUser(req, res, next) {
+function ensureIsAdminOrAuthUser(req, res, next) {
   try{
 
     if(!res.locals.user || 
@@ -94,5 +98,5 @@ module.exports = {
   authenticateJWT,
   ensureLoggedIn,
   ensureAdmin,
-  ensureisAdminOrAuthUser
+  ensureIsAdminOrAuthUser
 };

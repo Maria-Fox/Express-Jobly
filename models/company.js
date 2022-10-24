@@ -3,7 +3,7 @@
 const { query } = require("express");
 const db = require("../db");
 const { BadRequestError, NotFoundError, ExpressError } = require("../expressError");
-const { sqlForPartialUpdate } = require("../helpers/sql");
+const { sqlForPartialUpdate, getSqlWhereCompanyFilters } = require("../helpers/sql");
 
 /** Related functions for companies. */
 
@@ -50,7 +50,9 @@ class Company {
    * Returns [{ handle, name, description, numEmployees, logoUrl }, ...]
    * */
 
-  static async findAll() {
+  static async findAll(filter) {
+    // if no query is passed in use an empty object. Otherwise, use helper method to brek down the queries and create SQL q.sytax.
+    const sqlWhere = getSqlWhereCompanyFilters(filter ? filter : {} );
     const companiesRes = await db.query(
           `SELECT handle,
                   name,
@@ -58,6 +60,7 @@ class Company {
                   num_employees AS "numEmployees",
                   logo_url AS "logoUrl"
            FROM companies
+           ${sqlWhere}
            ORDER BY name`);
     return companiesRes.rows;
   }
@@ -74,65 +77,6 @@ class Company {
  * Authorization required: none
  */
 
-  static async findAllByFilter(queryItems) { 
-    let sqlQueryWriteUp = [];
-    let queryValues = [];
-
-    // deconstructs any or all items coming in from the request query. Comes in as key, value for each filter.
-    let { name, minEmployees, maxEmployees } = queryItems;
-
-    if(name){
-      queryValues.push(`%${name}%`);
-      // removed $
-      sqlQueryWriteUp.push(`name ILIKE ${name}`);
-    };
-
-    if(minEmployees && !maxEmployees){
-      if(minEmployees > maxEmployees){
-        return new BadRequestError("The minimum number of employees must be smaller than the maximum number of company employees. To fix lower the min number.", 400);
-      } else{
-        queryValues.push(minEmployees);
-        sqlQueryWriteUp.push(`num_employees >= ${minEmployees}`);
-      };
-    };
-
-    if(maxEmployees && !minEmployees){
-      queryValues.push(maxEmployees);
-      sqlQueryWriteUp.push(`num_employees <= ${maxEmployees}`);
-    };
-
-    if(minEmployees && maxEmployees){
-      if(minEmployees > maxEmployees){
-        return new BadRequestError("Please update employee search criteria so min is smaller than max employees.", 400);
-      } else {
-        queryValues.push(minEmployees, maxEmployees)
-        sqlQueryWriteUp.push(`num_employees BETWEEN ${minEmployees} AND ${maxEmployees}`);
-      };
-    };
-
-    // group all the queries together & send off to db.
-
-    let baseQuery = db.query(
-      `SELECT handle, name, num_employees, description , logo_url 
-      FROM companies`
-    );
-
-    // for each query the WHERE clause will be added using the queryValues passed in.
-    baseQuery += " WHERE " + sqlQueryWriteUp.join(" AND ");
-    // this is ordering the responses by name.. the name query is not required.
-    baseQuery += " ORDER BY name";
-
-    
-    console.log(baseQuery);
-    console.log(queryValues);
-    // it's giving me a parse syntax error when reading the queryValue.. [values]
-    const filterResponse = await db.query(baseQuery, queryValues);
-    console.log(filterResponse);
-    console.log(filterResponse.rows);
-    return filterResponse.rows;
-    
-
-  };
 
   /** Given a company handle, return data about company.
    *

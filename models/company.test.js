@@ -15,7 +15,9 @@ beforeEach(commonBeforeEach);
 afterEach(commonAfterEach);
 afterAll(commonAfterAll);
 
+
 /************************************** create */
+// can only be done by admin users.
 
 describe("create", function () {
   const newCompany = {
@@ -26,7 +28,8 @@ describe("create", function () {
     logoUrl: "http://new.img",
   };
 
-  test("works", async function () {
+  test("works for admin users", async function () {
+
     let company = await Company.create(newCompany);
     expect(company).toEqual(newCompany);
 
@@ -43,7 +46,11 @@ describe("create", function () {
         logo_url: "http://new.img",
       },
     ]);
-  });
+
+  //   test("returns unath for non-admin user", async function () {
+  //     let company = await Company.create(newCompany);
+  //     expect(company.statusCode).toEqual(401);
+  // });
 
   test("bad request with dupe", async function () {
     try {
@@ -112,6 +119,7 @@ describe("get", function () {
 });
 
 /************************************** update */
+// can only be used by admins.
 
 describe("update", function () {
   const updateData = {
@@ -188,6 +196,7 @@ describe("update", function () {
 });
 
 /************************************** remove */
+// can only be used by admins.
 
 describe("remove", function () {
   test("works", async function () {
